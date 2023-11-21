@@ -4,7 +4,7 @@ Sumo Robot for BTF 2023.
 
 Using Alfa's ESP32:
 Choose "DOIT ESP32 DEVKIT V1" for the board.
-MAC address: 0C:B8:15:D8:7D:F0
+MAC address: CENSORED
 
 Robot abilities:
 - Analog movement, rotation and movement able to be combined.
