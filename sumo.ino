@@ -295,9 +295,7 @@ void setup() {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
   if (PS4.isConnected()) {
-    // process action queue and execute if any
     int actionQueueStatus = processActionQueue();
     if (actionQueueStatus) executeAction();
     
