@@ -372,6 +372,8 @@ void loop() {
     reset();
     if (millis() - stickReconnectTimer > STICK_RECONNECT_DELAY) {
       removePairedDevices();
+      PS4.end();
+      PS4.begin(ESP_ADDRESS);
       stickReconnectTimer = millis();
     }
   }
