@@ -4,7 +4,7 @@ Sumo Robot for BTF 2023.
 
 Using Alfa's ESP32:
 Choose "DOIT ESP32 DEVKIT V1" for the board.
-MAC address: CENSORED
+MAC address: 0C:B8:15:D8:7D:F0
 
 Robot abilities:
 - Analog movement, rotation and movement able to be combined.
@@ -17,12 +17,17 @@ Action queueing = ability to register next action while previous action is still
 // set to FALSE to disable serial output
 #define debug FALSE
 
+// set to FALSE to disable motor control
+#define motor TRUE
+
 #include <PS4Controller.h>
 
 // board and pin definitions
-const char ESP_ADDRESS[] = "CENSORED";
+const char ESP_ADDRESS[] = "0C:B8:15:D8:7D:F0";
 const int PIN_R_SPD = 25, PIN_R_FWD = 32, PIN_R_BWD = 33;
 const int PIN_L_SPD = 0, PIN_L_FWD = 0, PIN_L_BWD = 0;
+const int STICK_RECONNECT_DELAY = 3000; // if ps4 gets disconnected, keep trying to reconnect with this cooldown between attempts
+unsigned long stickReconnectTimer = 0;
 
 // controller parameters
 struct Controller {
@@ -45,6 +50,8 @@ const float ROT_LEAD = 1, ROT_TRAIL = 1;
 // special actions processing
 enum Action {Neutral, Dash, SpinR, SpinL};
 const int DASH_DURATION = 300, SPIN_DURATION = 300; // time it takes for an action to finish
+const float DASH_SPEED = 1, SPIN_SPEED = 1; // normalized speed
+const int SPIN_ACTIVE = 100; // how long motor should stay on during spin
 const int ACTION_DEBOUNCE = 200; // cooldown time for same-action queueing
 Action currentAction, nextAction;
 unsigned long lastActionStart = -100000;
@@ -72,7 +79,14 @@ float fmap(float x, float in_min, float in_max, float out_min, float out_max)
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
+// true if past debounce
+bool checkDebounce (unsigned long deb = ACTION_DEBOUNCE) {
+  return (millis() - lastActionStart > ACTION_DEBOUNCE);
+}
+
 // ======================== LOW-LEVEL CONTROL ============================
+
+#ifdef motor
 
 // normalized speed = -1 to 1. first parameter = left wheel, second = right wheel
 void setSpeed(float l, float r) {
@@ -102,6 +116,31 @@ void setSpeed(float l, float r) {
   analogWrite(PIN_R_SPD, (int)(r * 255));
   analogWrite(PIN_L_SPD, (int)(l * 255));
 }
+
+#else
+
+void setSpeed(float l, float r) {
+  // verify speeds
+  if (r < -1) r = -1; else if (r > 1) r = 1;
+  if (l < -1) l = -1; else if (l > 1) l = 1;
+
+  Serial.print("MOTORPWM\t");
+
+  if (r < 0) {
+    Serial.printf("R%d\t", (int)(r * 255));
+  }
+  else {
+    Serial.printf("R+%d\t", (int)(r * 255));
+  }
+  if (l < 0) {
+    Serial.printf("L%d\t", (int)(l * 255));
+  }
+  else {
+    Serial.printf("L+%d\t", (int)(l * 255));
+  }
+}
+
+#endif
 
 // ===================== PROCESS ANALOG CTRL =======================
 
@@ -137,14 +176,14 @@ void move(int speedStick, int rotStick) {
     rotR *= ROT_TRAIL; rotL *= ROT_LEAD;
   }
 
-  #ifdef debug
+#ifdef debug
   Serial.print("SPEEDOUT\t");
   Serial.print("Speed: "); Serial.print(speed);
   Serial.print("\tRot: "); Serial.print(rot);
   Serial.print("\tNet R: "); Serial.print(speed + rotR);
   Serial.print("\tNet L: "); Serial.print(speed + rotL);
   Serial.println();
-  #endif
+#endif
 
   setSpeed(speed + rotL, speed + rotR);
 }
@@ -153,23 +192,25 @@ void move(int speedStick, int rotStick) {
 
 void dash()
 {
-  setSpeed(1, 1);
+  setSpeed(DASH_SPEED, DASH_SPEED);
 }
 
 void spinR()
 {
-  setSpeed(1, -1);
+  // active motor phase
+  if (checkDebounce(100)) setSpeed(SPIN_SPEED * ROT_LEAD, -SPIN_SPEED * ROT_TRAIL);
+  else setSpeed(0, 0);
 }
 
 void spinL()
 {
-  setSpeed(-1, 1);
+  if (checkDebounce(100)) setSpeed(-SPIN_SPEED * ROT_TRAIL, SPIN_SPEED * ROT_LEAD);
+  else setSpeed(0, 0);
 }
 
 void reset()
 {
   setSpeed(0, 0);
-  delay(100);
 }
 
 // ======================== PROCESS ACTIONS ============================
@@ -182,12 +223,7 @@ unsigned long getCooldown (Action act) {
 
 // true if past cooldown
 bool checkCooldown (Action act) {
-  return (millis() - lastActionStart > getCooldown(act));
-}
-
-// true if past debounce
-bool checkDebounce () {
-  return (millis() - lastActionStart > ACTION_DEBOUNCE);
+  return checkDebounce(getCooldown(act));
 }
 
 // return 0 if currently not doing action (dash/spin)
@@ -210,7 +246,7 @@ int processActionQueue()
     lastActionStart = millis();
   }
 
-  #if defined debug
+#ifdef debug
   Serial.print("ACTIONS\t");
   Serial.print("currentAction: "); Serial.print(getActionName(currentAction));
   Serial.print("\tnextAction: "); Serial.print(getActionName(nextAction));
@@ -218,7 +254,7 @@ int processActionQueue()
     Serial.print("\t| Cooldown: "); Serial.print(getCooldown(currentAction));
   }
   Serial.println();
-  #endif
+#endif
 
   // "!!" converts nonzero integer to 1. Neutral = 0
   return (!!currentAction + !!nextAction);
@@ -238,7 +274,7 @@ void processController(int actionQueueStatus)
   stick.l1 = PS4.L1();
   // dash
   stick.x = PS4.Cross();
-  // analog sticks (L-Y, R-X)
+  // analog sticks
   stick.ly = PS4.LStickY();
   stick.rx = PS4.RStickX();
 
@@ -259,7 +295,7 @@ void processController(int actionQueueStatus)
   // if not doing action, process analog movement
   if (actionQueueStatus == 0) move(stick.ly, stick.rx);
 
-  #ifdef debug
+#ifdef debug
   if (stick.r1 || stick.l1 || stick.x || stick.ly || stick.rx) {
     Serial.print("READINGS\t");
     if (stick.x) Serial.print(" X");
@@ -273,16 +309,10 @@ void processController(int actionQueueStatus)
     }
     Serial.println();
   }
-  #endif
+#endif
 }
 
 void setup() {
-  #ifdef debug
-  Serial.begin(115200);
-  Serial.println();
-  #endif
-
-  PS4.begin(ESP_ADDRESS);
   pinMode(PIN_R_SPD, OUTPUT);
   pinMode(PIN_R_FWD, OUTPUT);
   pinMode(PIN_R_BWD, OUTPUT);
@@ -290,21 +320,36 @@ void setup() {
   pinMode(PIN_L_FWD, OUTPUT);
   pinMode(PIN_L_BWD, OUTPUT);
 
+  PS4.begin(ESP_ADDRESS);
+
+  #ifdef debug
+  Serial.begin(115200);
+  Serial.println();
+  #endif
+
   currentAction = nextAction = Neutral;
   reset();
 }
 
 void loop() {
   if (PS4.isConnected()) {
+    // process action queue and execute if any
     int actionQueueStatus = processActionQueue();
-    if (actionQueueStatus) executeAction();
+    executeAction();
     
     processController(actionQueueStatus);
-    #ifdef debug
+#ifdef debug
     delay(50);
-    #endif
+#endif
+#ifndef motor
+    delay(200);
+#endif
   }
   else {
     reset();
+    if (millis() - stickReconnectTimer > STICK_RECONNECT_DELAY) {
+      PS4.begin(ESP_ADDRESS);
+
+    }
   }
 }
