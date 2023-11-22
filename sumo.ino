@@ -44,8 +44,7 @@ struct Controller {
 
 // motor control tuning parameters
 // necessary for superposition: speed_max + rot_max < stick_max
-// rot lead & trail = percentage of rot speed to be applied
-// lead rotates forward, trail rotates backward. must be tuned so net rotation is in place
+// rot lead & trail = percentage of rot speed to be applied for fw wheel and bw wheel
 const int STICK_ZERO = 10, STICK_FINE = 100, STICK_MAX = 128;
 const int SPEED_MIN = 15, SPEED_MID = 23, SPEED_MAX = 70;
 const int ROT_MIN = 15, ROT_MID = 20, ROT_MAX = 30;
@@ -54,8 +53,8 @@ const float ROT_LEAD = 1, ROT_TRAIL = 1;
 // special actions processing
 enum Action {Neutral, Dash, SpinR, SpinL};
 const int DASH_DURATION = 300, SPIN_DURATION = 300; // time it takes for an action to finish
-const float DASH_SPEED = 1, SPIN_SPEED = 1; // normalized speed
 const int SPIN_ACTIVE = 100; // how long motor should stay on during spin
+const float DASH_SPEED = 1, SPIN_SPEED = 1; // normalized speed
 const int ACTION_DEBOUNCE = 200; // cooldown time for same-action queueing
 Action currentAction, nextAction;
 unsigned long lastActionStart = -100000;
