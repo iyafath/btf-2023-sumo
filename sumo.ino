@@ -15,7 +15,7 @@ Action queueing = ability to register next action while previous action is still
 */
 
 // set to FALSE to disable serial output
-#define debug FALSE
+#define debug TRUE
 
 // set to FALSE to disable motor control
 #define motor TRUE
