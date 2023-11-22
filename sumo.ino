@@ -7,10 +7,8 @@ Choose "DOIT ESP32 DEVKIT V1" for the board.
 MAC address: 0C:B8:15:D8:7D:F0
 
 Robot abilities:
-- Analog movement, rotation and movement able to be combined.
+- Analog movement
 - Actions: dash forward and spin 180 degrees, queueable
-
-Action queueing = ability to register next action while previous action is still being executed
 
 */
 
