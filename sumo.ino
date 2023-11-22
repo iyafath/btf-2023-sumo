@@ -21,6 +21,10 @@ Action queueing = ability to register next action while previous action is still
 #define motor TRUE
 
 #include <PS4Controller.h>
+#include "esp_bt_main.h"
+#include "esp_bt_device.h"
+#include "esp_gap_bt_api.h"
+#include "esp_err.h"
 
 // board and pin definitions
 const char ESP_ADDRESS[] = "0C:B8:15:D8:7D:F0";
@@ -82,6 +86,26 @@ float fmap(float x, float in_min, float in_max, float out_min, float out_max)
 // true if past debounce
 bool checkDebounce (unsigned long deb = ACTION_DEBOUNCE) {
   return (millis() - lastActionStart > ACTION_DEBOUNCE);
+}
+
+// ======================= CONTROLLER CHECKS =========================
+
+// from ps4 example
+void removePairedDevices() {
+  uint8_t pairedDeviceBtAddr[20][6];
+  int count = esp_bt_gap_get_bond_device_num();
+  esp_bt_gap_get_bond_device_list(&count, pairedDeviceBtAddr);
+  for (int i = 0; i < count; i++) {
+    esp_bt_gap_remove_bond_device(pairedDeviceBtAddr[i]);
+  }
+}
+
+void onConnect() {
+  Serial.println("Connected!");
+}
+
+void onDisconnect() {
+  Serial.println("Disconnected!");
 }
 
 // ======================== LOW-LEVEL CONTROL ============================
@@ -321,6 +345,8 @@ void setup() {
   pinMode(PIN_L_BWD, OUTPUT);
 
   PS4.begin(ESP_ADDRESS);
+  PS4.attachOnConnect(onConnect);
+  PS4.attachOnDisconnect(onDisconnect);
 
   #ifdef debug
   Serial.begin(115200);
@@ -348,8 +374,7 @@ void loop() {
   else {
     reset();
     if (millis() - stickReconnectTimer > STICK_RECONNECT_DELAY) {
-      PS4.begin(ESP_ADDRESS);
-
+      removePairedDevices();
     }
   }
 }
