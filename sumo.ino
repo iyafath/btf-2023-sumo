@@ -4,7 +4,7 @@ Sumo Robot for BTF 2023.
 
 Using Alfa's ESP32:
 Choose "DOIT ESP32 DEVKIT V1" for the board.
-MAC address: 0C:B8:15:D8:7D:F0
+MAC address: 00:00:00:00:00:00
 
 Robot abilities:
 - Analog movement
@@ -25,7 +25,7 @@ Robot abilities:
 #include "esp_err.h"
 
 // board and pin definitions
-const char ESP_ADDRESS[] = "0C:B8:15:D8:7D:F0";
+const char ESP_ADDRESS[] = "00:00:00:00:00:00";
 const int PIN_R_SPD = 25, PIN_R_FWD = 32, PIN_R_BWD = 33;
 const int PIN_L_SPD = 0, PIN_L_FWD = 0, PIN_L_BWD = 0;
 const int STICK_RECONNECT_DELAY = 3000; // if ps4 gets disconnected, keep trying to reconnect with this cooldown between attempts
