@@ -25,7 +25,7 @@ Robot abilities:
 #include "esp_err.h"
 
 // board and pin definitions
-const char ESP_ADDRESS[] = "C8:F0:9E:F2:30:D4";
+const char ESP_ADDRESS[] = "00:00:00:00:00:00";
 const int PIN_R_SPD = 25, PIN_R_FWD = 32, PIN_R_BWD = 33;
 const int PIN_L_SPD = 18, PIN_L_FWD = 19, PIN_L_BWD = 21;
 const int STICK_RECONNECT_DELAY = 3000; // if ps4 gets disconnected, keep trying to reconnect with this cooldown between attempts
