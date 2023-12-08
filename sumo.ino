@@ -13,7 +13,7 @@ Robot abilities:
 */
 
 // comment out to disable serial output
-// #define debug TRUE
+#define debug TRUE
 
 // comment out to disable motor control
 #define motor TRUE
@@ -25,7 +25,7 @@ Robot abilities:
 #include "esp_err.h"
 
 // board and pin definitions
-const char ESP_ADDRESS[] = "00:00:00:00:00:00";
+const char ESP_ADDRESS[] = "C8:F0:9E:F2:30:D4";
 const int PIN_R_SPD = 25, PIN_R_FWD = 32, PIN_R_BWD = 33;
 const int PIN_L_SPD = 18, PIN_L_FWD = 19, PIN_L_BWD = 21;
 const int STICK_RECONNECT_DELAY = 3000; // if ps4 gets disconnected, keep trying to reconnect with this cooldown between attempts
@@ -45,8 +45,8 @@ struct Controller {
 // necessary for superposition: speed_max + rot_max < stick_max
 // rot lead & trail = percentage of rot speed to be applied for fw wheel and bw wheel
 const int STICK_ZERO = 10, STICK_FINE = 100, STICK_MAX = 128;
-const int SPEED_MIN = 15, SPEED_MID = 40, SPEED_MAX = 70;
-const int ROT_MIN = 15, ROT_MID = 35, ROT_MAX = 57;
+const int SPEED_MIN = 20, SPEED_MID = 70, SPEED_MAX = 100;
+const int ROT_MIN = 20, ROT_MID = 60, ROT_MAX = 80;
 const float ROT_LEAD = 1, ROT_TRAIL = 1;
 
 // special actions processing
@@ -208,8 +208,12 @@ void move(int speedStick, int rotStick) {
   Serial.print("\tNet L: "); Serial.print(speed + rotL);
   Serial.println();
 #endif
-
-  setSpeed(speed + rotL, speed + rotR);
+  float l = speed + rotL, r = speed + rotR;
+  if (max(abs(l), abs(r)) > 1) {
+    float mx = max(abs(l), abs(r));
+    l /= mx; r /= mx;
+  }
+  setSpeed(l, r);
 }
 
 // ======================== ACTIONS ============================
@@ -333,15 +337,15 @@ void processController(int actionQueueStatus)
 #ifdef debug
   if (stick.r1 || stick.l1 || stick.x || stick.sq || stick.ly || stick.rx) {
     Serial.print("READINGS\t");
-    if (stick.x) Serial.print(" X");
-    if (stick.sq) Serial.print(" Square");
-    if (stick.r1) Serial.print(" R1");
-    if (stick.l1) Serial.print(" L1");
+    if (stick.x) Serial.print("X ");
+    if (stick.sq) Serial.print("Square ");
+    if (stick.r1) Serial.print("R1 ");
+    if (stick.l1) Serial.print("L1 ");
     if (stick.ly) {
-      Serial.print(" LY:"); Serial.print(stick.ly);
+      Serial.print("LY:"); Serial.print(stick.ly); Serial.print(" ");
     }
     if (stick.rx) {
-      Serial.print(" RX:"); Serial.print(stick.ly);
+      Serial.print("RX:"); Serial.print(stick.rx); Serial.print(" ");
     }
   }
   Serial.println();
@@ -376,7 +380,7 @@ void loop() {
     processController(actionQueueStatus);
     delay(50);
 #ifndef motor
-    delay(200);
+    delay(100);
 #endif
   }
   else {
